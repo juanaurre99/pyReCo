@@ -21,34 +21,40 @@ pyReCo (Python Reservoir Computing) is a library developed by the Cyber-Physical
 
 ### Source Code (`src/pyreco/`)
 
-#### Core Modules
+#### Core Modules (`core/`)
 
-1. **models.py**
-   - Contains the main ReservoirComputer class
-   - Implements the scikit-learn compatible API
-   - Provides basic RC functionality with `.fit()` and `.predict()` methods
-
-2. **custom_models.py**
+1. **custom_models.py**
    - Implements the CustomModel API
    - Provides more flexible RC model configurations
    - Allows custom layer stacking and configuration
 
-3. **layers.py**
+2. **layers.py**
    - Defines different types of network layers:
      - InputLayer
      - RandomReservoirLayer
      - ReadoutLayer
    - Implements layer-specific functionality and properties
 
-4. **optimizers.py**
+3. **optimizers.py**
    - Contains optimization algorithms for training
    - Implements Ridge regression and other optimization methods
 
-5. **metrics.py**
-   - Defines performance evaluation metrics
-   - Includes MSE, MAE, and other relevant metrics
+4. **initializer.py**
+   - Network initialization utilities
+   - Weight initialization methods
+   - Parameter initialization
 
-#### Utility Modules
+5. **pruning.py**
+   - Implements network pruning algorithms
+   - Node removal and network optimization
+   - Performance optimization tools
+
+6. **network_prop_extractor.py**
+   - Network property extraction
+   - Feature calculation
+   - Property analysis tools
+
+#### Utility Modules (`utils/`)
 
 1. **utils_data.py**
    - Data preprocessing and manipulation utilities
@@ -60,17 +66,12 @@ pyReCo (Python Reservoir Computing) is a library developed by the Cyber-Physical
    - Network property calculations
    - Network manipulation tools
 
-3. **pruning.py**
-   - Implements network pruning algorithms
-   - Node removal and network optimization
-   - Performance optimization tools
+3. **plotting.py**
+   - Visualization utilities
+   - Result plotting functions
+   - Network visualization tools
 
-4. **cross_validation.py**
-   - Implements k-fold cross-validation
-   - Model evaluation utilities
-   - Performance assessment tools
-
-#### Analysis Modules
+#### Analysis Modules (`analysis/`)
 
 1. **graph_analyzer.py**
    - Network graph analysis tools
@@ -82,46 +83,38 @@ pyReCo (Python Reservoir Computing) is a library developed by the Cyber-Physical
    - Node importance assessment
    - Node contribution analysis
 
-3. **network_prop_extractor.py**
-   - Network property extraction
-   - Feature calculation
-   - Property analysis tools
-
-4. **node_selector.py**
+3. **node_selector.py**
    - Node selection algorithms
    - Important node identification
    - Node subset selection
 
-#### Supporting Modules
-
-1. **initializer.py**
-   - Network initialization utilities
-   - Weight initialization methods
-   - Parameter initialization
-
-2. **remove_transients.py**
+4. **remove_transients.py**
    - Transient state removal
    - Initial condition handling
    - State stabilization
 
-3. **plotting.py**
-   - Visualization utilities
-   - Result plotting functions
-   - Network visualization tools
+#### Metrics Module (`metrics/`)
+
+1. **metrics.py**
+   - Defines performance evaluation metrics
+   - Includes MSE, MAE, and other relevant metrics
+   - Implements metric calculation utilities
+
+#### Validation Module (`validation/`)
+
+1. **cross_validation.py**
+   - Implements k-fold cross-validation
+   - Model evaluation utilities
+   - Performance assessment tools
 
 ## Key Classes and Their Purposes
 
-### ReservoirComputer (models.py)
-- Main RC implementation
-- Scikit-learn compatible interface
-- Basic RC functionality
-
-### CustomModel (custom_models.py)
+### CustomModel (core/custom_models.py)
 - Flexible RC implementation
 - Custom layer stacking
 - Advanced configuration options
 
-### Layer Classes (layers.py)
+### Layer Classes (core/layers.py)
 1. **InputLayer**
    - Handles input data
    - Input preprocessing

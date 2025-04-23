@@ -1,7 +1,7 @@
 import pytest
 import networkx as nx
 import numpy as np
-from pyreco.node_selector import NodeSelector
+from pyreco.analysis.node_selector import NodeSelector
 
 
 def test_node_selector_initialization():

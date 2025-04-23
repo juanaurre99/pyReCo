@@ -1,11 +1,11 @@
 # test the pruning
 import numpy as np
 import matplotlib.pyplot as plt
-from pyreco.utils_data import sequence_to_sequence as seq_2_seq
-from pyreco.custom_models import RC as RC
-from pyreco.layers import InputLayer, ReadoutLayer
-from pyreco.layers import RandomReservoirLayer
-from pyreco.optimizers import RidgeSK
+from pyreco.utils.utils_data import sequence_to_sequence as seq_2_seq
+from pyreco.core.custom_models import RC as RC
+from pyreco.core.layers import InputLayer, ReadoutLayer
+from pyreco.core.layers import RandomReservoirLayer
+from pyreco.core.optimizers import RidgeSK
 
 
 # get some data
@@ -46,7 +46,7 @@ print(f"score: \t\t\t{model.evaluate(x=X_test, y=y_test)[0]:.4f}")
 """
 Pruning Part
 """
-from pyreco.pruning import NetworkPruner
+from pyreco.core.pruning import NetworkPruner
 
 # prune the model
 pruner = NetworkPruner(

@@ -1,5 +1,5 @@
 import numpy as np
-from .utils_networks import (
+from pyreco.utils.utils_networks import (
     extract_density, extract_spectral_radius, extract_in_degree_av,
     extract_out_degree_av, extract_clustering_coefficient,
     extract_node_degree, extract_node_in_degree, extract_node_out_degree,

@@ -3,11 +3,11 @@ Some testing use case learning a sequence-to-scalar mapping task
 """
 
 from matplotlib import pyplot as plt
-from pyreco.custom_models import RC as RC
-from pyreco.layers import InputLayer, ReadoutLayer
-from pyreco.layers import RandomReservoirLayer
-from pyreco.plotting import r2_scatter
-from pyreco.utils_data import sequence_to_scalar
+from pyreco.core.custom_models import RC as RC
+from pyreco.core.layers import InputLayer, ReadoutLayer
+from pyreco.core.layers import RandomReservoirLayer
+from pyreco.utils.plotting import r2_scatter
+from pyreco.utils.utils_data import sequence_to_scalar
 
 """
 Classic RC built on random networks. 

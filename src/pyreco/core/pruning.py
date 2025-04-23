@@ -4,14 +4,14 @@ performance while reducing the reservoir size
 """
 
 import numpy as np
-from pyreco.custom_models import RC
-from pyreco.node_selector import NodeSelector
+from pyreco.core.custom_models import RC
+from pyreco.analysis.node_selector import NodeSelector
 import networkx as nx
 import math
 from typing import Union
 import copy
-from pyreco.graph_analyzer import GraphAnalyzer
-from pyreco.node_analyzer import NodeAnalyzer
+from pyreco.analysis.graph_analyzer import GraphAnalyzer
+from pyreco.analysis.node_analyzer import NodeAnalyzer
 
 
 class NetworkPruner:
@@ -638,7 +638,7 @@ if __name__ == "__main__":
     # test the pruning
 
     from pyreco.utils_data import sequence_to_sequence as seq_2_seq
-    from pyreco.custom_models import RC as RC
+    from pyreco.core.custom_models import RC as RC
     from pyreco.layers import InputLayer, ReadoutLayer
     from pyreco.layers import RandomReservoirLayer
     from pyreco.optimizers import RidgeSK

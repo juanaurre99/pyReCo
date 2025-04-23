@@ -5,7 +5,7 @@ Some plotting capabilities
 import numpy as np
 from matplotlib import pyplot as plt
 
-from .metrics import r2
+from pyreco.metrics.metrics import r2
 
 def r2_scatter(y_true: np.ndarray, y_pred: np.ndarray, state_idx: int|tuple= None,
                title:str = None, xlabel:str=None, ylabel:str = None):

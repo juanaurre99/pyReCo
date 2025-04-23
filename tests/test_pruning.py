@@ -1,5 +1,5 @@
 import pytest
-from pyreco.pruning import NetworkPruner
+from pyreco.core.pruning import NetworkPruner
 
 
 def test_network_pruner_initialization():

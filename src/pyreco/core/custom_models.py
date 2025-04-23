@@ -5,17 +5,17 @@ import copy
 import multiprocessing
 from functools import partial
 
-from pyreco.layers import (
+from pyreco.core.layers import (
     Layer,
     InputLayer,
     ReservoirLayer,
     ReadoutLayer,
 )
-from pyreco.optimizers import Optimizer, assign_optimizer
-from pyreco.metrics import assign_metric
-from pyreco.node_selector import NodeSelector
-from pyreco.initializer import NetworkInitializer
-from pyreco.utils_networks import rename_nodes_after_removal
+from pyreco.core.optimizers import Optimizer, assign_optimizer
+from pyreco.metrics.metrics import assign_metric
+from pyreco.analysis.node_selector import NodeSelector
+from pyreco.core.initializer import NetworkInitializer
+from pyreco.utils.utils_networks import rename_nodes_after_removal
 
 
 # def sample_random_nodes(total_nodes: int, fraction: float):

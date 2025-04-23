@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
-from pyreco.utils_networks import compute_density
-from pyreco.utils_networks import get_num_nodes
-from pyreco.utils_networks import compute_spec_rad
-from pyreco.utils_networks import set_spec_rad
+from pyreco.utils.utils_networks import compute_density
+from pyreco.utils.utils_networks import get_num_nodes
+from pyreco.utils.utils_networks import compute_spec_rad
+from pyreco.utils.utils_networks import set_spec_rad
 
 
 __author__ = "Manish Yadav"
