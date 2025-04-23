@@ -40,14 +40,14 @@ def test_compute_density():
     # Test with a non-square matrix (should raise ValueError)
     network = np.array([[0, 1, 0],
                         [0, 0, 1]])
-    with pytest.raises(ValueError('adjacency matrix must be square')):
+    with pytest.raises(ValueError, match='adjacency matrix must be square'):
         compute_density(network)
 
     # Test with a non-numpy array input (should raise TypeError)
     network = [[0, 1, 0],
                [0, 0, 1],
                [1, 0, 0]]
-    with pytest.raises(TypeError('type of adjacency matrix must be numpy.ndarray')):
+    with pytest.raises(TypeError, match='type of adjacency matrix must be numpy.ndarray'):
         compute_density(network)
 
 
@@ -68,14 +68,14 @@ def test_get_num_nodes():
     # Test with a non-square matrix (should raise ValueError)
     network = np.array([[0, 1, 0],
                         [0, 0, 1]])
-    with pytest.raises(ValueError('adjacency matrix must be square')):
+    with pytest.raises(ValueError, match='adjacency matrix must be square'):
         get_num_nodes(network)
 
     # Test with a non-numpy array input (should raise TypeError)
     network = [[0, 1, 0],
                [0, 0, 1],
                [1, 0, 0]]
-    with pytest.raises(TypeError('adjacency matrix must be numpy.ndarray')):
+    with pytest.raises(TypeError, match='adjacency matrix must be numpy.ndarray'):
         get_num_nodes(network)
 
 
@@ -101,14 +101,14 @@ def test_compute_spec_rad():
     # Test with a non-square matrix (should raise ValueError)
     network = np.array([[0, 1, 0],
                         [0, 0, 1]])
-    with pytest.raises(ValueError('adjacency matrix must be square')):
+    with pytest.raises(ValueError, match='adjacency matrix must be square'):
         compute_spec_rad(network)
 
     # Test with a non-numpy array input (should raise TypeError)
     network = [[0, 1, 0],
                [0, 0, 1],
                [1, 0, 0]]
-    with pytest.raises(TypeError('adjacency matrix must be numpy.ndarray')):
+    with pytest.raises(TypeError, match='adjacency matrix must be numpy.ndarray'):
         compute_spec_rad(network)
 
 
@@ -133,14 +133,14 @@ def test_set_spec_rad():
     # Test with an empty matrix (should raise ValueError)
     network = np.zeros((3, 3))
     new_spec_rad = 1.0
-    with pytest.raises(ValueError('adjacency matrix must have at least one link')):
+    with pytest.raises(ValueError, match='adjacency matrix must have at least one link'):
         set_spec_rad(network, new_spec_rad)
 
     # Test with a non-square matrix (should raise ValueError)
     network = np.array([[0, 1, 0],
                         [0, 0, 1]])
     new_spec_rad = 1.0
-    with pytest.raises(ValueError('adjacency matrix must be square')):
+    with pytest.raises(ValueError, match='adjacency matrix must be square'):
         set_spec_rad(network, new_spec_rad)
 
     # Test with a non-numpy array input (should raise TypeError)
@@ -148,5 +148,5 @@ def test_set_spec_rad():
                [0, 0, 1],
                [1, 0, 0]]
     new_spec_rad = 1.0
-    with pytest.raises(TypeError('adjacency matrix must be numpy.ndarray')):
+    with pytest.raises(TypeError, match='adjacency matrix must be numpy.ndarray'):
         set_spec_rad(network, new_spec_rad)
