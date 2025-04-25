@@ -10,9 +10,9 @@ from pathlib import Path
 @dataclass
 class LayerConfig:
     """Configuration for a neural network layer."""
-    size: int
-    type: Optional[str] = None
+    type: str
     activation: Optional[str] = None
+    size: Optional[int] = None
     connectivity: Optional[float] = None
 
 
@@ -29,10 +29,27 @@ class ModelConfig:
         """Create ModelConfig from dictionary."""
         return cls(
             type=data['type'],
-            input_layer=LayerConfig(**data['input_layer']),
-            reservoir_layer=LayerConfig(**data['reservoir_layer']),
-            output_layer=LayerConfig(**data['output_layer'])
+            input_layer=LayerConfig(type=data['input_layer']['type'], 
+                                  activation=data['input_layer'].get('activation')),
+            reservoir_layer=LayerConfig(type=data['reservoir_layer']['type'], 
+                                      activation=data['reservoir_layer'].get('activation')),
+            output_layer=LayerConfig(type=data['output_layer']['type'], 
+                                   activation=data['output_layer'].get('activation'))
         )
+    
+    def set_layer_sizes(self, task_config: 'TaskConfig', search_space: Dict[str, Any]) -> None:
+        """Set layer sizes based on task dimensions and search space."""
+        # Input layer size from task input dimension
+        self.input_layer.size = task_config.input_dim
+        
+        # Reservoir layer size from search space if available
+        if 'nodes' in search_space:
+            self.reservoir_layer.size = search_space['nodes'].get('range', [100])[0]
+        else:
+            self.reservoir_layer.size = 100  # Default size
+            
+        # Output layer size from task output dimension
+        self.output_layer.size = task_config.output_dim
 
 
 @dataclass
@@ -143,13 +160,20 @@ class ExperimentConfig:
     def from_dict(cls, data: Dict[str, Any]) -> 'ExperimentConfig':
         """Create ExperimentConfig from dictionary."""
         experiment_data = data['experiment']
+        task_config = TaskConfig.from_dict(data['task'])
+        model_config = ModelConfig.from_dict(data['model'])
+        search_space = data['search_space']
+        
+        # Set layer sizes based on task dimensions and search space
+        model_config.set_layer_sizes(task_config, search_space)
+        
         return cls(
             name=experiment_data['name'],
             description=experiment_data['description'],
             seed=experiment_data['seed'],
-            task=TaskConfig.from_dict(data['task']),
-            model=ModelConfig.from_dict(data['model']),
-            search_space=SearchSpaceConfig.from_dict(data['search_space']),
+            task=task_config,
+            model=model_config,
+            search_space=SearchSpaceConfig.from_dict(search_space),
             optimization=OptimizationConfig.from_dict(data['optimization']),
             metrics=MetricsConfig.from_dict(data['metrics']),
             output_dir=Path(experiment_data.get('output_dir', '.'))
