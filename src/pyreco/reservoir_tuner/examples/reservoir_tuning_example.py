@@ -17,31 +17,6 @@ import shutil
 from pyreco.reservoir_tuner.experiment.manager import ExperimentManager
 from pyreco.reservoir_tuner.metrics.aggregator import ResultAggregator
 
-def generate_sine_data(n_samples=1000, sequence_length=10):
-    """Generate synthetic sine wave data for testing."""
-    t = np.linspace(0, 2*np.pi, n_samples)
-    X = np.sin(t).reshape(-1, 1)
-    y = np.cos(t).reshape(-1, 1)
-    
-    # Create sequences
-    X_sequences = []
-    y_sequences = []
-    for i in range(len(X) - sequence_length):
-        X_sequences.append(X[i:i+sequence_length])
-        y_sequences.append(y[i:i+sequence_length])
-    
-    X_sequences = np.array(X_sequences)
-    y_sequences = np.array(y_sequences)
-    
-    # Split into train and validation sets
-    train_size = int(0.8 * len(X_sequences))
-    X_train = X_sequences[:train_size]
-    y_train = y_sequences[:train_size]
-    X_val = X_sequences[train_size:]
-    y_val = y_sequences[train_size:]
-    
-    return (X_train, y_train), (X_val, y_val)
-
 def main():
     # Create output directory for results
     output_dir = Path("optimization_results")
@@ -49,9 +24,6 @@ def main():
     print(f"Results will be saved to: {output_dir}")
     
     try:
-        # Generate synthetic data
-        train_data, val_data = generate_sine_data()
-        
         # Create experiment configuration
         config = {
             "experiment": {
@@ -73,35 +45,36 @@ def main():
                 "type": "reservoir",
                 "input_layer": {
                     "type": "dense",
-                    "size": 1,
                     "activation": "linear"
                 },
                 "reservoir_layer": {
                     "type": "reservoir",
-                    "size": 100,  # Default size, will be tuned
-                    "activation": "tanh",
-                    "connectivity": 0.1  # Default density, will be tuned
+                    "activation": "tanh"
                 },
                 "output_layer": {
                     "type": "dense",
-                    "size": 1,
                     "activation": "linear"
                 }
             },
             "search_space": {
-                "nodes": {"type": "int", "range": [50, 200]},
+                "nodes": {"type": "int", "range": [100, 101]},
                 "density": {"type": "float", "range": [0.1, 0.9]},
                 "activation": {"type": "categorical", "values": ["tanh", "sigmoid"]},
                 "leakage_rate": {"type": "float", "range": [0.1, 1.0]},
                 "alpha": {"type": "float", "range": [0.1, 2.0]}
             },
             "optimization": {
-                "strategy": "random",
+                "strategy": "composite",
                 "max_trials": 20,
                 "strategies": [
                     {
+                        "type": "bayesian",
+                        "weight": 0.7,
+                        "exploration_factor": 0.1
+                    },
+                    {
                         "type": "random",
-                        "weight": 1.0,
+                        "weight": 0.3,
                         "exploration_factor": 2.0
                     }
                 ]
@@ -115,12 +88,6 @@ def main():
         
         # Initialize experiment manager
         manager = ExperimentManager(config)
-        
-        # Set task data
-        manager.set_task_data(
-            train_data=train_data,
-            val_data=val_data
-        )
         
         # Run the optimization
         print("\nStarting hyperparameter optimization...")
