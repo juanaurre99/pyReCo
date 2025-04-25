@@ -1,7 +1,7 @@
 import numpy as np
 from pyreco.utils.utils_networks import (
-    extract_density, extract_spectral_radius, extract_in_degree_av,
-    extract_out_degree_av, extract_clustering_coefficient,
+    extract_density, extract_spectral_radius, extract_av_in_degree,
+    extract_av_out_degree, extract_clustering_coefficient,
     extract_node_degree, extract_node_in_degree, extract_node_out_degree,
     extract_node_clustering_coefficient, extract_node_betweenness_centrality,
     extract_node_pagerank
@@ -27,8 +27,8 @@ class NetworkQuantifier:
         self.extractors = {
             'density': extract_density,
             'spectral_radius': extract_spectral_radius,
-            'in_degree_av': extract_in_degree_av,  
-            'out_degree_av': extract_out_degree_av,
+            'in_degree_av': extract_av_in_degree,  
+            'out_degree_av': extract_av_out_degree,
             'clustering_coefficient': extract_clustering_coefficient
         }
 

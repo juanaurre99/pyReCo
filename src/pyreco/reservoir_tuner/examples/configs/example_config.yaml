@@ -1,0 +1,57 @@
+experiment:
+  name: "sine_prediction"
+  description: "Predicting sine wave using reservoir computing"
+  seed: 42
+
+task:
+  type: "time_series_prediction"
+  input_dim: 1
+  output_dim: 1
+  sequence_length: 1000
+  train_ratio: 0.8
+  validation_ratio: 0.1
+
+model:
+  type: "reservoir"
+  input_layer:
+    size: 1
+  reservoir_layer:
+    type: "random"
+    size: 100
+    connectivity: 0.1
+  output_layer:
+    size: 1
+    activation: "linear"
+
+search_space:
+  spectral_radius:
+    type: "float"
+    range: [0.1, 2.0]
+  input_scaling:
+    type: "float"
+    range: [0.1, 1.0]
+  bias_scaling:
+    type: "float"
+    range: [0.0, 1.0]
+  leaking_rate:
+    type: "float"
+    range: [0.1, 1.0]
+
+optimization:
+  strategy: "composite"
+  max_trials: 100
+  strategies:
+    - type: "random"
+      weight: 0.3
+    - type: "bayesian"
+      weight: 0.7
+      exploration_factor: 0.1
+
+metrics:
+  primary: "mse"
+  secondary:
+    - "mae"
+    - "r2_score"
+  resource:
+    - "training_time"
+    - "memory_usage" 

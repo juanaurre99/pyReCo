@@ -148,6 +148,7 @@ CASE 1: Vector to Vector
 def vector_to_vector(name, n_batch: int = 50, n_states=1):
     assert type(n_states) is int
     n_time_in = 1
+    n_time_out = 1  # Define n_time_out before using it
 
     # make sure to have at least 1 testing sample
     n_batch = np.max([n_batch, 2])
