@@ -40,7 +40,7 @@ class TaskFactory:
                 - sequence_length: Length of sequences (for sequence tasks)
                 
         Returns:
-            Tuple of (X_train, X_test, y_train, y_test)
+            Tuple of (X_train, X_test, y_train, y_test) with shape (n_batch, n_timesteps, n_features)
         """
         if config.type not in cls.TASK_TYPES:
             raise ValueError(f"Unsupported task type: {config.type}")
@@ -48,35 +48,25 @@ class TaskFactory:
         if config.name not in cls.TASK_NAMES:
             raise ValueError(f"Unsupported task name: {config.name}")
         
-        task_fn = cls.TASK_TYPES[config.type]
-        
-        # Generate task data based on task type
+        # Generate the data
         if config.type == "vector_to_vector":
-            X_train, X_test, y_train, y_test = task_fn(
-                name=config.name,
-                n_batch=100,  # Default batch size
+            X_train, X_test, y_train, y_test = cls.TASK_TYPES[config.type](
+                config.name,
+                n_batch=50,
                 n_states=config.input_dim
             )
-        elif config.type == "sequence_to_scalar":
-            X_train, X_test, y_train, y_test = task_fn(
-                name=config.name,
-                n_batch=100,  # Default batch size
-                n_states=config.input_dim,
-                n_time=config.sequence_length
-            )
-        else:  # sequence_to_sequence
-            X_train, X_test, y_train, y_test = task_fn(
-                name=config.name,
-                n_batch=100,  # Default batch size
+        else:
+            X_train, X_test, y_train, y_test = cls.TASK_TYPES[config.type](
+                config.name,
+                n_batch=50,
                 n_states=config.input_dim,
                 n_time=config.sequence_length
             )
         
-        # Reshape data if needed
-        if config.type == "vector_to_vector":
-            X_train = X_train.reshape(-1, config.input_dim)
-            X_test = X_test.reshape(-1, config.input_dim)
-            y_train = y_train.reshape(-1, config.output_dim)
-            y_test = y_test.reshape(-1, config.output_dim)
+        # Reshape data to 3D format (n_batch, n_timesteps, n_features)
+        X_train = X_train.reshape(-1, config.sequence_length, config.input_dim)
+        X_test = X_test.reshape(-1, config.sequence_length, config.input_dim)
+        y_train = y_train.reshape(-1, config.sequence_length, config.output_dim)
+        y_test = y_test.reshape(-1, config.sequence_length, config.output_dim)
         
         return X_train, X_test, y_train, y_test 

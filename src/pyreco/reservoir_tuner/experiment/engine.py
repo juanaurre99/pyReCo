@@ -204,9 +204,16 @@ class ExecutionEngine:
             # Log the error for debugging
             logger.error(f"Error in trial with params {params}: {str(e)}")
             
+            # Use a large but finite value for failed trials
+            failed_metrics = {
+                'mse': 1e10,  # Large but finite value
+                'mae': 1e10,  # Large but finite value
+                'rmse': 1e10  # Large but finite value
+            }
+            
             return {
                 'hyperparameters': params,
                 'error': str(e),
-                'metrics': {'mse': float('inf'), 'mae': float('inf')},
+                'metrics': failed_metrics,
                 'resources': resources
             } 

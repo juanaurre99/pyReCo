@@ -41,266 +41,218 @@ class ExperimentManager:
     - Coordinating between search strategies and execution engine
     """
     
-    def __init__(self, config: Union[str, Path, Dict[str, Any], ExperimentConfig]):
+    def __init__(self, config: Dict[str, Any] or ExperimentConfig):
         """
         Initialize the experiment manager.
         
         Args:
-            config: Either a path to a YAML/JSON config file,
-                   a dictionary containing the config,
-                   or an ExperimentConfig object
+            config: Experiment configuration dictionary or ExperimentConfig object
         """
         self.config = self._load_config(config)
         self._validate_config()
+        
+        # Create output directory
+        self.output_dir = Path(self.config.output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Initialize search strategy
         self.search_strategy = self._create_search_strategy()
-        self.task_data = self._create_task()
-        self.engine = None
+        
+        # Create task data
+        X_train, X_test, y_train, y_test = self._create_task()
+        
+        # Create task configuration for execution engine
+        task_config = {
+            'input_shape': (self.config.task.sequence_length, self.config.task.input_dim),
+            'output_shape': (self.config.task.sequence_length, self.config.task.output_dim),
+            'train_data': (X_train, y_train),
+            'val_data': (X_test, y_test)
+        }
+        
+        # Initialize execution engine with task configuration
+        self.engine = ExecutionEngine(task_config)
+        
+        # Initialize results tracking
+        self.trials = []
+        self.best_score = float('inf')
+        self.best_config = None
+        self.best_model = None
         
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> 'ExperimentManager':
-        """
-        Create ExperimentManager from configuration dictionary.
-        
-        Args:
-            config_dict: Dictionary containing experiment configuration
-            
-        Returns:
-            ExperimentManager instance
-        """
-        config = ExperimentConfig.from_dict(config_dict)
-        return cls(config)
+        """Create an ExperimentManager from a dictionary."""
+        return cls(config_dict)
     
-    def _load_config(self, config: Union[str, Path, Dict[str, Any], ExperimentConfig]) -> ExperimentConfig:
-        """Load configuration from various input types."""
+    def _load_config(self, config: Dict[str, Any] or ExperimentConfig) -> ExperimentConfig:
+        """Load configuration from dictionary or file."""
         if isinstance(config, ExperimentConfig):
             return config
-        elif isinstance(config, (str, Path)):
-            path = Path(config)
-            if path.suffix.lower() == '.yaml':
-                return ExperimentConfig.from_yaml(path)
-            elif path.suffix.lower() == '.json':
-                return ExperimentConfig.from_json(path)
-            else:
-                raise ValueError(f"Unsupported config file format: {path.suffix}")
-        elif isinstance(config, dict):
-            try:
-                return ExperimentConfig.from_dict(config)
-            except KeyError as e:
-                raise ValueError(f"Missing required configuration field: {e}")
-            except (TypeError, ValueError) as e:
-                raise ValueError(f"Invalid configuration: {e}")
-        else:
-            raise TypeError(f"Unsupported config type: {type(config)}")
+            
+        if isinstance(config, dict):
+            return ExperimentConfig.from_dict(config)
+            
+        raise ValueError("Config must be either a dictionary or ExperimentConfig object")
     
     def _validate_config(self):
-        """Validate the experiment configuration."""
-        # Validate task configuration
-        if self.config.task.train_ratio + self.config.task.validation_ratio > 1.0:
-            raise ValueError("Train and validation ratios sum to more than 1.0")
+        """Validate the configuration."""
+        required_sections = [
+            "task", "model", "search_space", "optimization", "metrics"
+        ]
         
-        # Validate model configuration
-        if self.config.model.type != "reservoir":
-            raise ValueError(f"Unsupported model type: {self.config.model.type}")
-        
-        # Validate search space
-        for param_name, param_config in self.config.search_space.parameters.items():
-            if param_config.type not in ["float", "int", "categorical"]:
-                raise ValueError(f"Unsupported parameter type for {param_name}: {param_config.type}")
-            if param_config.type in ["float", "int"]:
-                if len(param_config.range) != 2:
-                    raise ValueError(f"Range for {param_name} must be [min, max]")
-                if param_config.range[0] >= param_config.range[1]:
-                    raise ValueError(f"Invalid range for {param_name}: min >= max")
+        for section in required_sections:
+            if not hasattr(self.config, section):
+                raise ValueError(f"Missing required section: {section}")
     
     def _create_search_strategy(self) -> SearchStrategy:
-        """Create the search strategy based on configuration."""
-        if self.config.optimization.strategy == "random":
-            return RandomSearch(self._get_param_ranges())
-        elif self.config.optimization.strategy == "bayesian":
-            BayesianSearch = _get_bayesian_search()
-            return BayesianSearch(self._get_param_ranges())
-        elif self.config.optimization.strategy == "composite":
+        """Create search strategy based on configuration."""
+        strategy_type = self.config.optimization.strategy
+        
+        # Convert SearchSpaceConfig to dictionary format
+        param_ranges = {}
+        for name, param_config in self.config.search_space.parameters.items():
+            param_ranges[name] = {
+                'type': param_config.type,
+                'range': param_config.range,
+                'values': param_config.values
+            }
+        
+        if strategy_type == "random":
+            return RandomSearch(
+                parameter_space=param_ranges,
+                seed=self.config.seed
+            )
+        elif strategy_type == "bayesian":
+            return _get_bayesian_search()(
+                parameter_space=param_ranges,
+                seed=self.config.seed
+            )
+        elif strategy_type == "composite":
+            # Create individual strategies first
             strategies = []
             for strategy_config in self.config.optimization.strategies:
                 if strategy_config.type == "random":
-                    strategies.append(RandomSearch(self._get_param_ranges()))
+                    strategies.append(RandomSearch(
+                        parameter_space=param_ranges,
+                        seed=self.config.seed
+                    ))
                 elif strategy_config.type == "bayesian":
-                    BayesianSearch = _get_bayesian_search()
-                    strategies.append(BayesianSearch(self._get_param_ranges()))
+                    strategies.append(_get_bayesian_search()(
+                        parameter_space=param_ranges,
+                        seed=self.config.seed
+                    ))
                 else:
                     raise ValueError(f"Unsupported strategy type: {strategy_config.type}")
-            return CompositeSearch(strategies)
+            
+            # Get exploration factor from the first strategy config
+            exploration_factor = self.config.optimization.strategies[0].exploration_factor if self.config.optimization.strategies else 2.0
+            
+            return CompositeSearch(
+                strategies=strategies,
+                exploration_factor=exploration_factor
+            )
         else:
-            raise ValueError(f"Unsupported optimization strategy: {self.config.optimization.strategy}")
+            raise ValueError(f"Unsupported search strategy: {strategy_type}")
     
     def _get_param_ranges(self) -> Dict[str, Dict[str, Any]]:
-        """Convert search space configuration to parameter ranges."""
-        param_ranges = {}
-        for name, param in self.config.search_space.parameters.items():
-            if param.type in ['float', 'int']:
+        """Get parameter ranges from configuration."""
+        if isinstance(self.config.search_space, dict):
+            return self.config.search_space
+        else:
+            # Convert SearchSpaceConfig to dictionary format
+            param_ranges = {}
+            for name, param_config in self.config.search_space.parameters.items():
                 param_ranges[name] = {
-                    'type': param.type,
-                    'range': tuple(param.range)
+                    'type': param_config.type,
+                    'range': param_config.range,
+                    'values': param_config.values
                 }
-            elif param.type == 'categorical':
-                param_ranges[name] = {
-                    'type': param.type,
-                    'values': param.values
-                }
-        return param_ranges
+            return param_ranges
     
     def _create_task(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """Create the task dataset based on configuration."""
         return TaskFactory.create_task(self.config.task)
     
     def get_next_trial_config(self) -> Dict[str, Any]:
-        """Get configuration for the next trial from the search strategy."""
-        suggested_params = self.search_strategy.suggest()
-        return {
-            "model": self.config.model,
-            "task": self.config.task,
-            "hyperparameters": suggested_params,
-            "data": {
-                "X_train": self.task_data[0],
-                "X_test": self.task_data[1],
-                "y_train": self.task_data[2],
-                "y_test": self.task_data[3]
-            }
-        }
+        """Get next trial configuration from search strategy."""
+        return self.search_strategy.suggest()
     
     def update_search_strategy(self, params: Dict[str, Any], score: float):
-        """
-        Update the search strategy with trial results.
-        
-        For failed trials (score = inf), we use a large finite value instead
-        to ensure the optimizer can handle it properly.
-        
-        Args:
-            params: Dictionary containing trial configuration
-            score: Performance score (lower is better)
-        """
-        if np.isinf(score):
-            # Use a large finite value instead of infinity
-            score = 1e10  # Large enough to be considered a bad result
-        
-        # Convert numpy types to Python types for the search strategy
-        config = {
-            'nodes': int(params['nodes']),
-            'density': float(params['density']),
-            'activation': str(params['activation']),
-            'leakage_rate': float(params['leakage_rate']),
-            'alpha': float(params['alpha'])
-        }
-        self.search_strategy.observe(config, score)
+        """Update search strategy with trial results."""
+        self.search_strategy.observe(params, score)
     
     @property
     def max_trials(self) -> int:
-        """Get the maximum number of trials for this experiment."""
+        """Get maximum number of trials."""
         return self.config.optimization.max_trials
     
     @property
     def experiment_name(self) -> str:
-        """Get the experiment name."""
-        return self.config.name
+        """Get experiment name."""
+        return self.config.experiment.name
     
     @property
     def metrics_config(self) -> Dict[str, Any]:
-        """Get the metrics configuration."""
-        return {
-            "primary": self.config.metrics.primary,
-            "secondary": self.config.metrics.secondary,
-            "resource": self.config.metrics.resource
-        }
+        """Get metrics configuration."""
+        return self.config.metrics
     
-    def set_task_data(self, train_data: Tuple, val_data: Tuple) -> None:
-        """
-        Set task data for the experiment.
-        
-        Args:
-            train_data: Tuple of (X_train, y_train)
-            val_data: Tuple of (X_val, y_val)
-        """
-        task_config = {
-            'input_shape': [self.config.task.sequence_length, self.config.task.input_dim],
-            'output_shape': [self.config.task.sequence_length, self.config.task.output_dim],
-            'train_data': train_data,
-            'val_data': val_data
-        }
-        self.engine = ExecutionEngine(task_config)
+    def run_trial(self, trial_config: Dict[str, Any]) -> Dict[str, float]:
+        """Run a single optimization trial."""
+        return self.engine.run_trial(trial_config)
     
-    def run_trial(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Run a trial with the given configuration.
+    def run_experiment(self, n_trials: int):
+        """Run the full optimization experiment."""
+        best_score = float("-inf")
+        best_params = None
         
-        Args:
-            config: Trial configuration
+        for trial in range(n_trials):
+            logger.info(f"Running trial {trial + 1}/{n_trials}")
             
-        Returns:
-            Dictionary containing trial results
-        """
-        if self.engine is None:
-            raise RuntimeError("Task data not set. Call set_task_data first.")
-        
-        # Map hyperparameters to model parameters
-        params = {
-            'nodes': config['hyperparameters']['nodes'],
-            'density': config['hyperparameters']['density'],
-            'activation': config['hyperparameters']['activation'],
-            'leakage_rate': config['hyperparameters']['leakage_rate'],
-            'alpha': config['hyperparameters']['alpha']
-        }
-        
-        # Run trial
-        return self.engine.run_trial(params)
+            # Get next trial configuration
+            trial_config = self.get_next_trial_config()
+            
+            # Run trial
+            results = self.run_trial(trial_config)
+            
+            # Update search strategy
+            self.update_search_strategy(trial_config, results["score"])
+            
+            # Update best results
+            if results["score"] > best_score:
+                best_score = results["score"]
+                best_params = trial_config
+                
+                # Save best results
+                self._save_results(best_params, best_score)
     
-    def _save_results(self, results: Dict[str, Any], output_dir: str) -> None:
-        """
-        Save experiment results to a JSON file.
-        
-        Args:
-            results: Dictionary containing experiment results
-            output_dir: Directory to save results in
-        """
-        # Create output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Convert numpy arrays and types to Python types for JSON serialization
+    def _save_results(self, params: Dict[str, Any], score: float):
+        """Save best results to file."""
+        # Convert numpy types to Python native types
         def convert_numpy(obj):
-            """Convert numpy types to Python types for JSON serialization."""
-            if isinstance(obj, np.ndarray):
-                return obj.tolist()
-            elif isinstance(obj, (np.int64, np.int32, np.int16, np.int8)):
+            if isinstance(obj, np.integer):
                 return int(obj)
-            elif isinstance(obj, (np.float64, np.float32, np.float16)):
+            elif isinstance(obj, np.floating):
                 return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
             elif isinstance(obj, dict):
                 return {k: convert_numpy(v) for k, v in obj.items()}
             elif isinstance(obj, list):
                 return [convert_numpy(item) for item in obj]
-            elif hasattr(obj, '__class__') and obj.__class__.__name__ == 'RC':
-                # Convert RC model to a string representation
-                return f"RC_Model(nodes={obj.reservoir_layer.nodes})"
             return obj
         
-        # Save results to JSON file
-        output_file = os.path.join(output_dir, "results.json")
-        with open(output_file, "w") as f:
-            json.dump(convert_numpy(results), f, indent=2)
+        results = {
+            "params": convert_numpy(params),
+            "score": convert_numpy(score)
+        }
+        
+        with open(self.output_dir / "best_results.json", "w") as f:
+            json.dump(results, f, indent=2)
     
     def _save_best_model(self, model: Any, output_dir: str) -> None:
-        """
-        Save the best model to a pickle file.
-        
-        Args:
-            model: Best performing model
-            output_dir: Directory to save model in
-        """
-        # Create output directory if it doesn't exist
-        os.makedirs(output_dir, exist_ok=True)
-        
-        # Save model to pickle file
-        output_file = os.path.join(output_dir, "best_model.pkl")
-        with open(output_file, "wb") as f:
+        """Save the best model to disk."""
+        output_path = Path(output_dir)
+        model_path = output_path / "best_model.pkl"
+        with open(model_path, 'wb') as f:
             pickle.dump(model, f)
     
     def run(self) -> Dict[str, Any]:
@@ -319,7 +271,7 @@ class ExperimentManager:
         best_config = None
         best_model = None
         total_runtime = 0
-        total_memory = 0
+        max_memory = 0
         
         for _ in range(self.max_trials):
             # Get next trial configuration
@@ -327,44 +279,39 @@ class ExperimentManager:
             
             # Run trial
             result = self.run_trial(trial_config)
-            trials.append(result)
             
-            # Update search strategy if trial was successful
-            if 'metrics' in result:
-                score = result['metrics']['mse']
-                
-                # Track best result
-                if score < best_score:
-                    best_score = score
-                    best_config = trial_config['hyperparameters']
-                    best_model = result.get('model')
-                
-                # Update search strategy after tracking best result
-                self.update_search_strategy(trial_config['hyperparameters'], score)
+            # Update best results
+            if result['metrics']['mse'] < best_score:
+                best_score = result['metrics']['mse']
+                best_config = trial_config
+                best_model = result.get('model')
             
-            # Accumulate resource usage
+            # Update search strategy
+            self.update_search_strategy(trial_config, result['metrics']['mse'])
+            
+            # Track resources
             total_runtime += result['resources']['runtime']
-            total_memory += result['resources']['memory_usage']
+            max_memory = max(max_memory, result['resources']['memory_usage'])
+            
+            # Store trial results
+            trials.append(result)
         
-        # Calculate average resource usage
-        n_trials = len(trials)
+        # Prepare final results
         results = {
             'trials': trials,
             'best_config': best_config,
             'best_score': best_score,
             'resources': {
                 'total_runtime': total_runtime,
-                'total_memory': total_memory,
-                'avg_runtime': total_runtime / n_trials if n_trials > 0 else 0,
-                'avg_memory': total_memory / n_trials if n_trials > 0 else 0
+                'max_memory_usage': max_memory
             }
         }
         
+        # Save results
+        self._save_results(best_config, best_score)
+        
         # Save best model if available
         if best_model is not None:
-            self._save_best_model(best_model, str(self.config.output_dir))
-        
-        # Save results
-        self._save_results(results, str(self.config.output_dir))
+            self._save_best_model(best_model, str(self.output_dir))
         
         return results 
